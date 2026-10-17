@@ -1,2 +1,2 @@
 @echo off
-wscript //nologo "%~dp0Æô¶¯.vbs"
+wscript //nologo "%~dp0start.vbs"

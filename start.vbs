@@ -1,6 +1,6 @@
 Option Explicit
 
-Dim fso, shell, here, html, browser, commandText
+Dim fso, shell, here, html, browser, commandText, profile
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set shell = CreateObject("WScript.Shell")
 here = fso.GetParentFolderName(WScript.ScriptFullName)
@@ -10,9 +10,11 @@ browser = FindBrowser()
 If browser = "" Then
   shell.Run "explorer.exe """ & html & """", 1, False
 Else
-  commandText = """" & browser & """ --app=""" & FileUri(html) & """ --window-size=960,820"
+  profile = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%\error-translator\edge")
+  commandText = """" & browser & """ --app=""" & FileUri(html) & """ --window-size=920,590 --user-data-dir=""" & profile & """"
   shell.Run commandText, 1, False
 End If
+shell.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & here & "\set-window-icon.ps1""", 0, False
 
 Function FindBrowser()
   Dim candidates, path

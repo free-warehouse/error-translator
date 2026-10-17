@@ -2,7 +2,7 @@
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $desktop = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = Join-Path $desktop "报错翻译器.lnk"
-$vbs = Join-Path $here "启动.vbs"
+$vbs = Join-Path $here "start.vbs"
 $icon = Join-Path $here "icon.ico"
 $wscript = Join-Path $env:SystemRoot "System32\wscript.exe"
 
