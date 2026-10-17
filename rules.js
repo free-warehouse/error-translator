@@ -1,3 +1,5 @@
+window.ERROR_LANGS = ["HTML", "CSS", "JavaScript", "MySQL", "Java", "Python", "C/C++"];
+
 window.ERROR_RULES = [
   { lang: "Java", name: "NullPointerException", test: /NullPointerException/, title: "空指针",
     meaning: "程序用到了一个空对象。空对象上面没有方法，也没有字段，所以一调用就停了。",
