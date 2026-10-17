@@ -1,2 +1,2 @@
 @echo off
-start "" "%~dp0index.html"
+wscript //nologo "%~dp0Æô¶¯.vbs"
