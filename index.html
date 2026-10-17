@@ -37,7 +37,7 @@
     }
     button.tiny { padding: 4px 10px; font-size: 13px; color: var(--muted); }
     label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-    select, textarea, input {
+    textarea, input {
       width: 100%;
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -45,8 +45,77 @@
       color: inherit;
       font: inherit;
     }
-    select { padding: 8px 10px; margin-bottom: 12px; }
     input { padding: 8px 10px; }
+    .combo { position: relative; margin-bottom: 12px; }
+    .combo-field {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      overflow: hidden;
+    }
+    .combo-field input {
+      border: 0;
+      border-radius: 0;
+      flex: 1;
+      min-width: 0;
+    }
+    .combo-clear,
+    .combo-toggle {
+      border: 0;
+      border-left: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 0 12px;
+      cursor: pointer;
+      line-height: 1;
+      font: inherit;
+    }
+    .combo-clear { padding: 0 10px; }
+    .combo-clear:disabled,
+    .combo-toggle:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .combo-list {
+      list-style: none;
+      margin: 4px 0 0;
+      padding: 4px 0;
+      position: absolute;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      max-height: 220px;
+      overflow-y: auto;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(36, 28, 22, 0.08);
+    }
+    .combo-list button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      padding: 8px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .combo-list button:hover,
+    .combo-list button.active {
+      background: #f7f3ed;
+    }
+    .combo-tip {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--accent);
+    }
+    .drawer .combo { margin-bottom: 0; }
     textarea {
       min-height: 72px;
       padding: 12px;
@@ -114,6 +183,22 @@
     }
     .snippet { min-height: 160px; white-space: pre; }
     .dev-grid { display: grid; gap: 8px; margin-top: 8px; }
+    .dev-point {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      background: var(--card);
+    }
+    .dev-point-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .dev-point-top span { font-size: 13px; color: var(--muted); }
+    .dev-point textarea { min-height: 56px; }
   </style>
 </head>
 <body>
@@ -122,8 +207,16 @@
       <h1>报错翻译器</h1>
       <button id="dev" class="ghost tiny" type="button">开发</button>
     </div>
-    <label for="lang">语言</label>
-    <select id="lang"></select>
+    <label for="lang-input">语言</label>
+    <div class="combo" id="lang-combo">
+      <div class="combo-field">
+        <input id="lang-input" type="text" autocomplete="off" spellcheck="false" placeholder="选择或输入语言" />
+        <button id="lang-clear" class="combo-clear" type="button" aria-label="清空语言">清空</button>
+        <button id="lang-toggle" class="combo-toggle" type="button" aria-label="打开语言列表">▾</button>
+      </div>
+      <ul id="lang-list" class="combo-list hidden"></ul>
+      <p id="lang-tip" class="combo-tip hidden"></p>
+    </div>
     <label for="input">报错原文</label>
     <textarea id="input" placeholder="可以只贴报错原因那一行，也可以贴整段。"></textarea>
     <div class="row">
@@ -146,78 +239,379 @@
         <h2>给后来的开发者：</h2>
         <button id="dev-close" class="ghost tiny" type="button">关闭</button>
       </div>
-      <p>这只是一个简陋的小工具。它只会做一件事：选一种语言，贴一段报错，库里有这条才用中文讲一讲，再附上两个知识点。语言和报错都还在补，功能也简单。</p>
-      <p>如果你也喜欢这个小工具，欢迎为其补充和完善！缺的语言可以补上，没覆盖的报错可以补上，觉得不好用的功能也可以直接改。下面是现在这套库怎么加一条报错、怎么加一种语言，文件在同一文件夹的 <code>rules.js</code>，改完保存，关掉这个窗口再打开。</p>
+      <p>这只是一个简陋的小工具。它只会做一件事：选一种语言，贴一段报错，库里有这条才用中文讲一讲，还可以附上知识点。语言和报错都还在补，功能也简单。</p>
+      <p>如果你也喜欢这个小工具，欢迎为其补充和完善！缺的语言可以补上，没覆盖的报错可以补上，觉得不好用的功能也可以直接改。文件在同一文件夹的 <code>rules.js</code>。</p>
+      <p>建议先点「仅本机试用」验证。它只存在这台电脑的浏览器里，可用「清除本机试用」撤掉，不会改坏仓库里的 <code>rules.js</code>。确认没问题后，再用「生成可贴代码」写进仓库。若已经直接改坏了 <code>rules.js</code>，请双击同文件夹的 <code>restore-factory.bat</code>。</p>
       <h3>加一条报错</h3>
       <ol>
-        <li>打开 <code>rules.js</code>，找到 <code>window.ERROR_RULES</code>。</li>
-        <li>在对应语言附近加一条规则。下面的表可以生成一份能直接粘贴的代码。</li>
-        <li><code>lang</code> 必须和 <code>ERROR_LANGS</code> 里的名字完全一致。</li>
-        <li><code>name</code> 要写报错原文里真实会出现的那一段。<code>test</code> 用来判断对上没有，<code>name</code> 必须能被它匹配到。</li>
-        <li>同一句可能对上多条时，更具体的那条把 <code>rank</code> 写成 2，并把 <code>name</code> 写得更长。</li>
-        <li>保存后重新打开，选对语言，贴一段真报错，点「翻译」。</li>
+        <li>打开 <code>rules.js</code>，找到 <code>window.ERROR_RULES</code>，或先用下面的表「仅本机试用」。</li>
+        <li>贴进文件时，前一条规则末尾要有逗号。生成出来的这一条末尾也自带逗号。</li>
+        <li><code>lang</code> 必须和 <code>ERROR_LANGS</code> 里的名字完全一致，包括大小写和斜杠。</li>
+        <li><code>name</code> 要写报错原文里真实会出现的那一段，并且尽量写完整，避免太短的词抢走别的规则。</li>
       </ol>
       <h3>加一种语言</h3>
       <ol>
-        <li>在 <code>window.ERROR_LANGS</code> 末尾加上语言名。页面上的语言列表读的就是这里。</li>
-        <li>按上面的格式，至少加一条 <code>lang</code> 相同的规则。</li>
-        <li>行号定位现在页面上不显示，可先不写 <code>window.ERROR_LOCATORS</code>。翻译仍然能用。</li>
+        <li>真正进仓库：把名字加进 <code>window.ERROR_LANGS</code>，再加至少一条同名规则，保存后关掉窗口再打开。</li>
+        <li>只想先试：在语言框输入全新名字后点「仅本机试用」。名字若和现有语言相同（含大小写不同），会被拦住，请改选库里已有的语言。</li>
+        <li>语言选项来自当前库。本机试用后的新语言会出现在列表里；清除本机试用后消失。</li>
       </ol>
-      <h3>生成一条规则</h3>
+      <h3>生成 / 试用一条规则</h3>
       <div class="dev-grid">
-        <label for="d-lang">语言名</label>
-        <input id="d-lang" />
+        <label for="d-lang-input">语言名</label>
+        <div class="combo" id="d-lang-combo">
+          <div class="combo-field">
+            <input id="d-lang-input" type="text" autocomplete="off" spellcheck="false" placeholder="选择、输入已有语言，或填新语言名" />
+            <button id="d-lang-clear" class="combo-clear" type="button" aria-label="清空语言">清空</button>
+            <button id="d-lang-toggle" class="combo-toggle" type="button" aria-label="打开语言列表">▾</button>
+          </div>
+          <ul id="d-lang-list" class="combo-list hidden"></ul>
+          <p id="d-lang-tip" class="combo-tip hidden"></p>
+        </div>
         <label for="d-name">报错里会出现的原文</label>
         <input id="d-name" placeholder="例如 NullPointerException" />
         <label for="d-title">中文标题</label>
         <input id="d-title" />
         <label for="d-meaning">解释</label>
         <textarea id="d-meaning"></textarea>
-        <label for="d-term1">知识点 1 名称</label>
-        <input id="d-term1" />
-        <label for="d-point1">知识点 1 说明</label>
-        <textarea id="d-point1"></textarea>
-        <label for="d-term2">知识点 2 名称</label>
-        <input id="d-term2" />
-        <label for="d-point2">知识点 2 说明</label>
-        <textarea id="d-point2"></textarea>
-        <label><input id="d-rank" type="checkbox" /> 这是更具体的一条</label>
-        <button id="d-make" type="button">生成代码</button>
+        <div class="dev-point-top">
+          <span>知识点（可空、可一条、可多条）</span>
+          <button id="d-add-point" class="ghost tiny" type="button">添加知识点</button>
+        </div>
+        <div id="d-points"></div>
+        <label><input id="d-rank" type="checkbox" /> 这是更具体的一条（同一句会抢赢更笼统的规则）</label>
+        <div class="row" style="margin:0;">
+          <button id="d-try" type="button">仅本机试用</button>
+          <button id="d-make" class="ghost" type="button">生成可贴代码</button>
+          <button id="d-reset" class="ghost" type="button">清除本机试用</button>
+        </div>
         <textarea id="d-out" class="snippet" readonly></textarea>
       </div>
     </aside>
   </div>
   <script src="rules.js"></script>
   <script>
+    const EXTRA_KEY = "error-translator-extras-v1";
+    const STOCK_LANGS = (window.ERROR_LANGS || []).slice();
+    const STOCK_RULES = (window.ERROR_RULES || []).slice();
+
     const input = document.querySelector("#input");
-    const lang = document.querySelector("#lang");
     const out = document.querySelector("#out");
     const devPanel = document.querySelector("#dev-panel");
+    const outBox = document.querySelector("#d-out");
+    const pointsBox = document.querySelector("#d-points");
+    const libraryOk = !!(STOCK_LANGS.length && window.ERROR_TOOL && window.ERROR_TOOL.explain);
 
-    const langs = window.ERROR_LANGS || [];
-    if (!langs.length || !window.ERROR_TOOL || !window.ERROR_TOOL.explain) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "规则文件没加载成功";
-      lang.append(option);
-      lang.disabled = true;
-      document.querySelector("#go").disabled = true;
-    } else {
-      langs.forEach((name) => {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        lang.append(option);
-      });
+    function jsString(value) {
+      return JSON.stringify(value || "");
     }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+    }
+
+    function readExtras() {
+      try {
+        const data = JSON.parse(localStorage.getItem(EXTRA_KEY) || "{}");
+        return {
+          langs: Array.isArray(data.langs) ? data.langs : [],
+          rules: Array.isArray(data.rules) ? data.rules : []
+        };
+      } catch (error) {
+        return { langs: [], rules: [] };
+      }
+    }
+
+    function writeExtras(data) {
+      localStorage.setItem(EXTRA_KEY, JSON.stringify(data));
+    }
+
+    function reviveRule(item) {
+      return {
+        lang: item.lang,
+        name: item.name,
+        test: new RegExp(item.testSource, item.testFlags || ""),
+        rank: item.rank,
+        title: item.title,
+        meaning: item.meaning,
+        look: item.look || "",
+        points: item.points || []
+      };
+    }
+
+    function applyLibrary() {
+      const extras = readExtras();
+      const langs = STOCK_LANGS.slice();
+      extras.langs.forEach((name) => {
+        if (langs.indexOf(name) < 0) langs.push(name);
+      });
+      window.ERROR_LANGS = langs;
+      const localRules = [];
+      extras.rules.forEach((item) => {
+        try {
+          localRules.push(reviveRule(item));
+        } catch (error) {
+          // skip broken local rule
+        }
+      });
+      window.ERROR_RULES = STOCK_RULES.concat(localRules);
+    }
+
+    function findLangIgnoreCase(name, list) {
+      const lower = String(name || "").toLowerCase();
+      return (list || []).find((item) => item.toLowerCase() === lower) || "";
+    }
+
+    function matchLangs(query, list) {
+      const q = String(query || "").trim().toLowerCase();
+      if (!q) return list.slice();
+      return list.filter((name) => name.toLowerCase().indexOf(q) >= 0);
+    }
+
+    function resolveKnownLang(typed, list) {
+      const text = String(typed || "").trim();
+      if (!text) return { status: "empty" };
+      if (list.indexOf(text) >= 0) return { status: "ok", lang: text };
+      const same = findLangIgnoreCase(text, list);
+      if (same) return { status: "ok", lang: same };
+      return { status: "missing", typed: text };
+    }
+
+    function createLangCombo(options) {
+      const inputEl = document.querySelector(options.input);
+      const listEl = document.querySelector(options.list);
+      const tipEl = document.querySelector(options.tip);
+      const toggleEl = document.querySelector(options.toggle);
+      const clearEl = document.querySelector(options.clear);
+      const allowNew = !!options.allowNew;
+      let names = [];
+      let open = false;
+      let active = -1;
+
+      function setTip(text) {
+        if (!text) {
+          tipEl.classList.add("hidden");
+          tipEl.textContent = "";
+          return;
+        }
+        tipEl.textContent = text;
+        tipEl.classList.remove("hidden");
+      }
+
+      function syncClear() {
+        clearEl.disabled = inputEl.disabled || !inputEl.value;
+      }
+
+      function close() {
+        open = false;
+        active = -1;
+        listEl.classList.add("hidden");
+        listEl.replaceChildren();
+      }
+
+      function choose(name) {
+        inputEl.value = name;
+        close();
+        setTip("");
+        syncClear();
+        inputEl.focus();
+      }
+
+      function render(filterText, forceOpen) {
+        const filtered = matchLangs(filterText, names);
+        listEl.replaceChildren();
+        active = -1;
+        if (!filtered.length) {
+          listEl.classList.add("hidden");
+          open = false;
+          return;
+        }
+        filtered.forEach((name, index) => {
+          const item = document.createElement("li");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = name;
+          button.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+            choose(name);
+          });
+          item.append(button);
+          listEl.append(item);
+          if (index === 0 && String(filterText || "").trim()) active = 0;
+        });
+        if (forceOpen || open) {
+          open = true;
+          listEl.classList.remove("hidden");
+          Array.from(listEl.querySelectorAll("button")).forEach((button, index) => {
+            button.classList.toggle("active", index === active);
+          });
+        }
+      }
+
+      function refreshTip() {
+        const text = inputEl.value.trim();
+        if (!text) {
+          setTip("");
+          return;
+        }
+        const hit = resolveKnownLang(text, names);
+        if (hit.status === "ok") {
+          if (hit.lang !== text) setTip("将使用库中的语言名：" + hit.lang);
+          else setTip("");
+          return;
+        }
+        const partial = matchLangs(text, names);
+        if (allowNew) {
+          if (partial.length) {
+            setTip("请从推荐里点选完整语言名；若要新增，请输入库里没有的名字。");
+          } else {
+            setTip("库中暂无此语言。生成/试用时会按新语言处理。");
+          }
+          return;
+        }
+        setTip(partial.length ? "请从推荐里点选完整语言名" : "库中暂无此语言");
+      }
+
+      function setNames(next) {
+        const prev = inputEl.value;
+        names = (next || []).slice();
+        if (!libraryOk) {
+          inputEl.value = "";
+          inputEl.disabled = true;
+          toggleEl.disabled = true;
+          clearEl.disabled = true;
+          setTip("规则文件没加载成功");
+          close();
+          return;
+        }
+        inputEl.disabled = false;
+        toggleEl.disabled = false;
+        if (prev && names.indexOf(prev) < 0 && !findLangIgnoreCase(prev, names) && !allowNew) {
+          inputEl.value = "";
+        }
+        refreshTip();
+        syncClear();
+        if (open) render(inputEl.value, true);
+      }
+
+      function getTyped() {
+        return inputEl.value.trim();
+      }
+
+      function setValue(name) {
+        inputEl.value = name || "";
+        refreshTip();
+        syncClear();
+      }
+
+      inputEl.addEventListener("input", () => {
+        render(inputEl.value, true);
+        refreshTip();
+        syncClear();
+      });
+      inputEl.addEventListener("focus", () => {
+        render(inputEl.value, true);
+        refreshTip();
+      });
+      inputEl.addEventListener("blur", () => {
+        window.setTimeout(() => {
+          if (!listEl.contains(document.activeElement)) close();
+        }, 120);
+      });
+      inputEl.addEventListener("keydown", (event) => {
+        const buttons = Array.from(listEl.querySelectorAll("button"));
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          if (!open) render(inputEl.value, true);
+          if (!buttons.length) return;
+          active = (active + 1) % buttons.length;
+          buttons.forEach((button, index) => button.classList.toggle("active", index === active));
+          buttons[active].scrollIntoView({ block: "nearest" });
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          if (!buttons.length) return;
+          active = active <= 0 ? buttons.length - 1 : active - 1;
+          buttons.forEach((button, index) => button.classList.toggle("active", index === active));
+          buttons[active].scrollIntoView({ block: "nearest" });
+        } else if (event.key === "Enter") {
+          if (open && active >= 0 && buttons[active]) {
+            event.preventDefault();
+            choose(buttons[active].textContent);
+          }
+        } else if (event.key === "Escape") {
+          close();
+        }
+      });
+      toggleEl.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        if (inputEl.disabled) return;
+        if (open) close();
+        else {
+          inputEl.focus();
+          render("", true);
+        }
+      });
+      clearEl.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        if (inputEl.disabled || !inputEl.value) return;
+        inputEl.value = "";
+        close();
+        setTip("");
+        syncClear();
+        inputEl.focus();
+      });
+      syncClear();
+
+      return {
+        setNames: setNames,
+        getTyped: getTyped,
+        setValue: setValue,
+        resolve: function () {
+          return resolveKnownLang(inputEl.value, names);
+        },
+        refreshTip: refreshTip,
+        close: close
+      };
+    }
+
+    const mainLang = createLangCombo({
+      input: "#lang-input",
+      list: "#lang-list",
+      tip: "#lang-tip",
+      toggle: "#lang-toggle",
+      clear: "#lang-clear",
+      allowNew: false
+    });
+    const devLang = createLangCombo({
+      input: "#d-lang-input",
+      list: "#d-lang-list",
+      tip: "#d-lang-tip",
+      toggle: "#d-lang-toggle",
+      clear: "#d-lang-clear",
+      allowNew: true
+    });
+
+    function syncLangCombos() {
+      const names = window.ERROR_LANGS || [];
+      mainLang.setNames(names);
+      devLang.setNames(names);
+      if (!libraryOk) {
+        document.querySelector("#go").disabled = true;
+      } else {
+        document.querySelector("#go").disabled = false;
+      }
+    }
+
+    applyLibrary();
+    syncLangCombos();
 
     function show(result) {
       out.classList.remove("hidden");
       document.querySelector("#title").textContent = result.title;
       document.querySelector("#meaning").textContent = result.meaning;
+      const list = result.points || [];
       const points = document.querySelector("#points");
       points.replaceChildren();
-      (result.points || []).forEach((point) => {
+      list.forEach((point) => {
         const item = document.createElement("li");
         item.className = "point";
         const term = document.createElement("b");
@@ -227,7 +621,10 @@
         item.append(term, body);
         points.append(item);
       });
-      document.querySelector("#extra").classList.toggle("hidden", result.kind === "unknown");
+      document.querySelector("#extra").classList.toggle(
+        "hidden",
+        result.kind === "unknown" || !list.length
+      );
     }
 
     function translate() {
@@ -239,12 +636,34 @@
         show({
           kind: "unknown",
           title: "规则文件没加载成功",
-          meaning: "同文件夹里的 rules.js 没有正确加载。请确认它还在，然后关掉窗口再打开。",
+          meaning: "同文件夹里的 rules.js 没有正确加载。请确认它还在，然后关掉窗口再打开。若改坏过，可双击 restore-factory.bat。",
           points: []
         });
         return;
       }
-      show(window.ERROR_TOOL.explain(input.value, lang.value));
+      const picked = mainLang.resolve();
+      if (picked.status === "empty") {
+        mainLang.refreshTip();
+        show({
+          kind: "unknown",
+          title: "先选语言",
+          meaning: "请先选择或输入一种语言。可以点右边倒三角从列表里选，也可以边输入边从推荐里点选。",
+          points: []
+        });
+        return;
+      }
+      if (picked.status === "missing") {
+        mainLang.refreshTip();
+        show({
+          kind: "unknown",
+          title: "库中暂无此语言",
+          meaning: "当前识别库里没有「" + picked.typed + "」。请从推荐列表里选一个完整语言名，或换一个库里已有的语言。",
+          points: []
+        });
+        return;
+      }
+      if (picked.lang !== mainLang.getTyped()) mainLang.setValue(picked.lang);
+      show(window.ERROR_TOOL.explain(input.value, picked.lang));
     }
 
     document.querySelector("#go").addEventListener("click", translate);
@@ -253,38 +672,279 @@
       out.classList.add("hidden");
     });
     document.querySelector("#dev").addEventListener("click", () => {
+      syncLangCombos();
       devPanel.classList.remove("hidden");
     });
     document.querySelector("#dev-close").addEventListener("click", () => {
+      devLang.close();
       devPanel.classList.add("hidden");
     });
+    devPanel.addEventListener("click", (event) => {
+      if (event.target === devPanel) {
+        devLang.close();
+        devPanel.classList.add("hidden");
+      }
+    });
+    document.addEventListener("mousedown", (event) => {
+      if (!event.target.closest("#lang-combo")) mainLang.close();
+      if (!event.target.closest("#d-lang-combo")) devLang.close();
+    });
 
-    function jsString(value) {
-      return JSON.stringify(value || "");
+    function renumberPoints() {
+      Array.from(pointsBox.children).forEach((row, index) => {
+        row.querySelector(".dev-point-label").textContent = "知识点 " + (index + 1);
+      });
     }
 
-    function escapeRegExp(value) {
-      return String(value).replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+    function addPointRow(term, text) {
+      const row = document.createElement("div");
+      row.className = "dev-point";
+      const top = document.createElement("div");
+      top.className = "dev-point-top";
+      const label = document.createElement("span");
+      label.className = "dev-point-label";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "ghost tiny";
+      remove.textContent = "删除";
+      remove.addEventListener("click", () => {
+        row.remove();
+        renumberPoints();
+      });
+      top.append(label, remove);
+      const termInput = document.createElement("input");
+      termInput.className = "d-term";
+      termInput.placeholder = "名称，例如 null";
+      termInput.value = term || "";
+      const textInput = document.createElement("textarea");
+      textInput.className = "d-text";
+      textInput.placeholder = "说明";
+      textInput.value = text || "";
+      row.append(top, termInput, textInput);
+      pointsBox.append(row);
+      renumberPoints();
+    }
+
+    document.querySelector("#d-add-point").addEventListener("click", () => {
+      addPointRow("", "");
+    });
+
+    function collectDraft() {
+      const typed = devLang.getTyped();
+      const names = window.ERROR_LANGS || [];
+      const resolved = resolveKnownLang(typed, names);
+      const stockHit = findLangIgnoreCase(typed, STOCK_LANGS);
+      let language = "";
+      let choosingNew = false;
+
+      if (!typed) {
+        return { error: "请先选择或输入语言名。可以点右边倒三角，也可以边输入边从推荐里选。" };
+      }
+      if (resolved.status === "ok") {
+        language = resolved.lang;
+        if (language !== typed) devLang.setValue(language);
+      } else if (stockHit) {
+        language = stockHit;
+        devLang.setValue(language);
+      } else if (matchLangs(typed, names).length) {
+        return { error: "请从推荐列表里点选完整语言名，或输入一个库里没有的全新语言名。" };
+      } else {
+        language = typed;
+        choosingNew = true;
+      }
+
+      const name = document.querySelector("#d-name").value.trim();
+      const title = document.querySelector("#d-title").value.trim();
+      const meaning = document.querySelector("#d-meaning").value.trim();
+      const wantRank = document.querySelector("#d-rank").checked;
+
+      if (!language || !name || !title || !meaning) {
+        return { error: "请先把语言、原文、标题、解释填完。知识点可以一个都不加。" };
+      }
+      if (/[\r\n]/.test(name)) {
+        return { error: "「报错里会出现的原文」不要换行。只填原文里连续的那一段。" };
+      }
+
+      const pointRows = Array.from(pointsBox.children);
+      const points = [];
+      for (let i = 0; i < pointRows.length; i += 1) {
+        const term = pointRows[i].querySelector(".d-term").value.trim();
+        const text = pointRows[i].querySelector(".d-text").value.trim();
+        if (!term && !text) continue;
+        if (!term || !text) {
+          return { error: "知识点 " + (i + 1) + " 的名称和说明要成对填完，或者整条删掉。" };
+        }
+        points.push({ term: term, text: text });
+      }
+
+      let testBody = escapeRegExp(name);
+      let probe;
+      try {
+        probe = new RegExp(testBody);
+      } catch (error) {
+        return { error: "这段原文没法做成正则。换一句更短、更稳定的原文再试。" };
+      }
+      if (!probe.test(name)) {
+        return { error: "生成出的 test 匹配不到 name。换一句更短的原文，或去掉特殊符号再试。" };
+      }
+
+      const same = (window.ERROR_RULES || []).filter((rule) => {
+        if (rule.lang !== language) return false;
+        if (rule.name === name) return true;
+        try {
+          return rule.test && rule.test.test(name);
+        } catch (error) {
+          return false;
+        }
+      });
+
+      return {
+        language: language,
+        name: name,
+        title: title,
+        meaning: meaning,
+        wantRank: wantRank,
+        choosingNew: choosingNew,
+        points: points,
+        testBody: testBody,
+        known: (window.ERROR_LANGS || []).indexOf(language) >= 0,
+        inStockLang: STOCK_LANGS.indexOf(language) >= 0,
+        same: same,
+        exact: same.filter((rule) => rule.name === name),
+        shortName: name.length < 5
+      };
+    }
+
+    function buildNotes(draft) {
+      const notes = [];
+      if (draft.choosingNew && !draft.known) {
+        notes.push(
+          "这是新语言 " +
+            jsString(draft.language) +
+            "。写入仓库前先把它加进 window.ERROR_LANGS；若用「仅本机试用」则不必先改文件。"
+        );
+      }
+      if (draft.shortName) {
+        notes.push("原文偏短，可能误伤别的报错。尽量写完整的报错片段后再加。");
+      }
+      if (draft.exact.length) {
+        notes.push(
+          "同语言下已经有同名规则 " +
+            jsString(draft.name) +
+            "（标题：" +
+            jsString(draft.exact[0].title || "") +
+            "）。再加一条时同一句仍只显示一条。想改解释请改旧规则。"
+        );
+      } else if (draft.same.length) {
+        notes.push(
+          "同语言下已有规则能对上这段原文，例如 " +
+            draft.same
+              .slice(0, 3)
+              .map((rule) => jsString(rule.name))
+              .join("、") +
+            "。同一句只认一条：rank 高的优先，其次 name 更长的。你现在" +
+            (draft.wantRank ? "勾了更具体" : "没勾更具体") +
+            "。"
+        );
+      }
+      return notes;
+    }
+
+    function buildPaste(draft) {
+      const rank = draft.wantRank ? ", rank: 2" : "";
+      const pointLines = draft.points.length
+        ? draft.points.map((point, index) => {
+            const comma = index < draft.points.length - 1 ? "," : "";
+            return "    { term: " + jsString(point.term) + ", text: " + jsString(point.text) + " }" + comma;
+          })
+        : [];
+      const rule = [
+        "{ lang: " + jsString(draft.language) + ", name: " + jsString(draft.name) + ", test: /" + draft.testBody + "/" + rank + ", title: " + jsString(draft.title) + ",",
+        "  meaning: " + jsString(draft.meaning) + ",",
+        "  look: " + jsString("看报错指出的那一行。"),
+        "  points: [" + (pointLines.length ? "" : "] },")
+      ];
+      if (pointLines.length) {
+        rule.push(pointLines.join("\n"));
+        rule.push("  ] },");
+      }
+      return rule.join("\n");
     }
 
     document.querySelector("#d-make").addEventListener("click", () => {
-      const language = document.querySelector("#d-lang").value.trim();
-      const name = document.querySelector("#d-name").value.trim();
-      const known = (window.ERROR_LANGS || []).indexOf(language) >= 0;
-      const rank = document.querySelector("#d-rank").checked ? ", rank: 2" : "";
-      const rule = [
-        "{ lang: " + jsString(language) + ", name: " + jsString(name) + ", test: /" + escapeRegExp(name) + "/" + rank + ", title: " + jsString(document.querySelector("#d-title").value.trim()) + ",",
-        "  meaning: " + jsString(document.querySelector("#d-meaning").value.trim()) + ",",
-        "  look: " + jsString("看报错指出的那一行。"),
-        "  points: [",
-        "    { term: " + jsString(document.querySelector("#d-term1").value.trim()) + ", text: " + jsString(document.querySelector("#d-point1").value.trim()) + " },",
-        "    { term: " + jsString(document.querySelector("#d-term2").value.trim()) + ", text: " + jsString(document.querySelector("#d-point2").value.trim()) + " }",
-        "  ] },"
-      ].join("\n");
-      const header = known || !language
-        ? "贴到 window.ERROR_RULES 里、同语言规则的附近：\n\n"
-        : "先把 " + jsString(language) + " 加进 window.ERROR_LANGS，再把下面贴进 window.ERROR_RULES：\n\n";
-      document.querySelector("#d-out").value = header + rule;
+      const draft = collectDraft();
+      if (draft.error) {
+        outBox.value = draft.error;
+        return;
+      }
+      const notes = buildNotes(draft);
+      if (!draft.known) {
+        notes.push("写入仓库时：先把语言名加进 window.ERROR_LANGS，再贴规则。");
+      }
+      notes.push("贴到 window.ERROR_RULES 里、同语言规则的附近。注意前一条末尾要有逗号。");
+      notes.push("直接改 rules.js 若改坏了，请双击 restore-factory.bat；本机试用内容用「清除本机试用」。");
+      outBox.value = notes.join("\n") + "\n\n" + buildPaste(draft);
+    });
+
+    document.querySelector("#d-try").addEventListener("click", () => {
+      const draft = collectDraft();
+      if (draft.error) {
+        outBox.value = draft.error;
+        return;
+      }
+      if (draft.exact.length) {
+        outBox.value =
+          "同语言同名规则已在库里，本机试用不会覆盖它，也容易让人以为改成功了。请改旧规则，或换更具体的原文并勾上「更具体」。";
+        return;
+      }
+
+      const extras = readExtras();
+      if (!draft.inStockLang && extras.langs.indexOf(draft.language) < 0) {
+        extras.langs.push(draft.language);
+      }
+      extras.rules.push({
+        lang: draft.language,
+        name: draft.name,
+        testSource: draft.testBody,
+        testFlags: "",
+        rank: draft.wantRank ? 2 : undefined,
+        title: draft.title,
+        meaning: draft.meaning,
+        look: "看报错指出的那一行。",
+        points: draft.points
+      });
+      writeExtras(extras);
+      applyLibrary();
+      syncLangCombos();
+      mainLang.setValue(draft.language);
+      devLang.setValue(draft.language);
+      const notes = buildNotes(draft);
+      notes.unshift("已加入本机试用，立刻生效。要撤掉时点「清除本机试用」。");
+      notes.push("确认无误后，再用「生成可贴代码」写进 rules.js 提交仓库。");
+      outBox.value = notes.join("\n");
+    });
+
+    document.querySelector("#d-reset").addEventListener("click", () => {
+      const extras = readExtras();
+      if (!extras.langs.length && !extras.rules.length) {
+        outBox.value = "当前没有本机试用内容，无需清除。";
+        return;
+      }
+      const ok = window.confirm(
+        "确定清除本机试用吗？\n\n会删掉这台电脑上通过「仅本机试用」加过的语言和规则（语言 " +
+          extras.langs.length +
+          " 个，规则 " +
+          extras.rules.length +
+          " 条）。\n不会改动 rules.js 文件本身。\n\n此操作不能撤销。"
+      );
+      if (!ok) return;
+      localStorage.removeItem(EXTRA_KEY);
+      applyLibrary();
+      syncLangCombos();
+      mainLang.setValue("");
+      devLang.setValue("");
+      outBox.value =
+        "已清除本机试用的语言和规则。\n若你曾直接改过 rules.js 导致识别乱了或页面打不开，请再双击同文件夹的 restore-factory.bat。";
     });
   </script>
 </body>
