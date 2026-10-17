@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>报错翻译器</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f1eb;
+      --card: #fffdf9;
+      --ink: #241c16;
+      --muted: #6b5f55;
+      --line: #e3d9ce;
+      --accent: #b84e1f;
+      --ok: #1f7a4d;
+      --warn: #8a5a12;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    main { max-width: 860px; margin: 0 auto; padding: 32px 18px 56px; }
+    h1 { font-size: 30px; margin: 0 0 18px; letter-spacing: -0.03em; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      color: inherit;
+      font: inherit;
+    }
+    select { padding: 8px 10px; margin-bottom: 12px; }
+    textarea {
+      min-height: 200px;
+      padding: 12px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      resize: vertical;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 18px; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 14px;
+      background: var(--accent);
+      color: white;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    article {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      margin-bottom: 8px;
+    }
+    .tag.ok { background: #e5f6ec; color: var(--ok); }
+    .tag.warn { background: #fff4df; color: var(--warn); }
+    article h2 { margin: 0 0 6px; font-size: 22px; }
+    article h3 { margin: 16px 0 4px; font-size: 14px; }
+    .where, .raw { color: var(--muted); font-size: 13px; }
+    .raw { font-family: Consolas, monospace; white-space: pre-wrap; }
+    .points { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px; }
+    .point {
+      background: #f7f3ed;
+      border-radius: 10px;
+      padding: 10px 12px 10px 14px;
+      border-left: 3px solid var(--accent);
+    }
+    .point b { display: block; font-size: 14px; margin-bottom: 2px; }
+    .point p { margin: 0; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>报错翻译器</h1>
+    <label for="lang">语言</label>
+    <select id="lang">
+      <option value="auto">自动识别</option>
+      <option value="Java">Java</option>
+      <option value="Python">Python</option>
+      <option value="MySQL">MySQL</option>
+      <option value="JavaScript">JavaScript</option>
+      <option value="C/C++">C / C++</option>
+      <option value="HTML">HTML</option>
+      <option value="CSS">CSS</option>
+    </select>
+    <label for="input">报错原文</label>
+    <textarea id="input" placeholder="从红色第一行开始贴，整段都可以。Ctrl + Enter 翻译。"></textarea>
+    <div class="row">
+      <button id="go" type="button">翻译</button>
+      <button id="sample" class="ghost" type="button">填入例子</button>
+      <button id="clear" class="ghost" type="button">清空</button>
+    </div>
+    <article id="out" class="hidden">
+      <div id="tag" class="tag"></div>
+      <h2 id="title"></h2>
+      <p id="where" class="where"></p>
+      <h3>人话</h3>
+      <p id="meaning"></p>
+      <h3>先看哪里</h3>
+      <p id="look"></p>
+      <h3>相关知识点</h3>
+      <ul id="points" class="points"></ul>
+      <h3>报错里的关键一行</h3>
+      <p id="raw" class="raw"></p>
+    </article>
+  </main>
+  <script src="rules.js"></script>
+  <script>
+    const samples = {
+      auto: `Exception in thread "main" java.lang.NullPointerException\n    at demo.Main.first(Main.java:4)`,
+      Java: `Exception in thread "main" java.lang.NullPointerException\n    at demo.Main.first(Main.java:4)\n    at demo.Main.main(Main.java:9)`,
+      Python: `Traceback (most recent call last):\n  File "hello.py", line 3, in <module>\n    print(name)\nNameError: name 'name' is not defined`,
+      MySQL: `ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'FORM users' at line 1`,
+      JavaScript: `TypeError: Cannot read properties of undefined (reading 'name')\n    at show (app.js:12:18)`,
+      "C/C++": `main.cpp:8:5: error: 'count' was not declared in this scope`,
+      HTML: `Error: Stray end tag div.\nFrom line 12, column 5; to line 12, column 10\n</div>`,
+      CSS: `styles.css:4:3  unknown property 'colour'`
+    };
+
+    const input = document.querySelector("#input");
+    const lang = document.querySelector("#lang");
+    const out = document.querySelector("#out");
+
+    function show(result) {
+      out.classList.remove("hidden");
+      const badge = document.querySelector("#tag");
+      badge.className = "tag " + result.tagClass;
+      badge.textContent = result.tag;
+      document.querySelector("#title").textContent = result.title;
+      const where = document.querySelector("#where");
+      where.textContent = result.where || "";
+      where.classList.toggle("hidden", !result.where);
+      document.querySelector("#meaning").textContent = result.meaning;
+      document.querySelector("#look").textContent = result.look;
+      const points = document.querySelector("#points");
+      points.replaceChildren();
+      (result.points || []).forEach((point) => {
+        const item = document.createElement("li");
+        item.className = "point";
+        const term = document.createElement("b");
+        term.textContent = point.term;
+        const body = document.createElement("p");
+        body.textContent = point.text;
+        item.append(term, body);
+        points.append(item);
+      });
+      document.querySelector("#raw").textContent = result.raw || "（没有单独的最后一行）";
+    }
+
+    function translate() {
+      show(window.ERROR_TOOL.explain(input.value, lang.value));
+    }
+
+    document.querySelector("#go").addEventListener("click", translate);
+    document.querySelector("#sample").addEventListener("click", () => {
+      input.value = samples[lang.value] || samples.auto;
+      translate();
+    });
+    document.querySelector("#clear").addEventListener("click", () => {
+      input.value = "";
+      out.classList.add("hidden");
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.key === "Enter") translate();
+    });
+  </script>
+</body>
+</html>
