@@ -194,12 +194,22 @@
     const out = document.querySelector("#out");
     const devPanel = document.querySelector("#dev-panel");
 
-    (window.ERROR_LANGS || []).forEach((name) => {
+    const langs = window.ERROR_LANGS || [];
+    if (!langs.length || !window.ERROR_TOOL || !window.ERROR_TOOL.explain) {
       const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
+      option.value = "";
+      option.textContent = "规则文件没加载成功";
       lang.append(option);
-    });
+      lang.disabled = true;
+      document.querySelector("#go").disabled = true;
+    } else {
+      langs.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        lang.append(option);
+      });
+    }
 
     function show(result) {
       out.classList.remove("hidden");
@@ -223,6 +233,15 @@
     function translate() {
       if (!input.value.trim()) {
         out.classList.add("hidden");
+        return;
+      }
+      if (!window.ERROR_TOOL || !window.ERROR_TOOL.explain) {
+        show({
+          kind: "unknown",
+          title: "规则文件没加载成功",
+          meaning: "同文件夹里的 rules.js 没有正确加载。请确认它还在，然后关掉窗口再打开。",
+          points: []
+        });
         return;
       }
       show(window.ERROR_TOOL.explain(input.value, lang.value));

@@ -2303,7 +2303,7 @@ window.ERROR_RULES = [
       { term: "递归上限", text: "Python 会限制调用栈深度，防止无限递归拖垮进程。" },
       { term: "结束条件", text: "每次调用都要更接近结束，否则会一直叠下去。" }
     ] },
-  { lang: "Python", name: "division by zero", test: /division by zero/, rank: 2, title: "除数是 0",
+  { lang: "Python", name: "division by zero", test: /(?<!warning: )division by zero/, rank: 2, title: "除数是 0",
     meaning: "做了除法或取余，右边是 0。",
     look: "除之前判断除数。为 0 时不要除。",
     points: [
@@ -3915,7 +3915,7 @@ window.ERROR_RULES = [
     ] },
   { lang: "HTML", name: "Element script requires an end tag", test: /Element script requires an end tag/i, title: "script 标签没有结束",
     meaning: "script 不能只写开始标签。浏览器会把后面的内容都当成脚本。",
-    look: "写上 </script>。脚本内容放在两个标签之间，或用 src 指向外部文件并仍然写上结束标签。",
+    look: "写上 <\/script>。脚本内容放在两个标签之间，或用 src 指向外部文件并仍然写上结束标签。",
     points: [
       { term: "script", text: "里面是脚本，不是普通文本。" },
       { term: "必须成对", text: "即使使用 src，也要有结束标签。" }
